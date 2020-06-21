@@ -1,0 +1,41 @@
+#include<stdint.h>
+#include<stdlib.h>
+#include<stdio.h>
+
+uint8_t my_itoa(int32_t data, uint8_t * ptr, uint32_t base){
+
+	uint8_t string[5];
+	*(string+4)='\0';
+	uint8_t character;
+	int i;
+	for(i=0;data!=0;i++){
+		character = (data & 0xFF);
+		*(string+i) = character;
+		printf("data %d char %x\n ",data,character);
+		data = (data >> 8);
+	}
+	ptr = string;
+	return i+1;
+}
+
+int32_t my_atoi(uint8_t * ptr, uint8_t digits, uint32_t base){
+	int32_t number;
+	int i=0;
+	for(;i<digits;i++){
+		number += (int)(*(ptr+i));
+		printf("numptr %d\n",*(ptr+i));
+	}
+	printf("number %d\n",number);
+	return number;
+}
+
+
+int main(void){
+	uint8_t str[5]="hai";
+	char srring[10];
+	int32_t x = my_atoi(str,4,10);
+	my_itoa(306,srring,10);
+	for(int i =0;i<10;i++){
+		printf(" %c ",srring[i]);
+	}
+}

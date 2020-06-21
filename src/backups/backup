@@ -1,0 +1,104 @@
+#******************************************************************************
+# Copyright (C) 2017 by Alex Fosdick - University of Colorado
+#
+# Redistribution, modification or use of this software in source or binary
+# forms is permitted as long as the files maintain this copyright. Users are 
+# permitted to modify this and use it to learn about the field of embedded
+# software. Alex Fosdick and the University of Colorado are not liable for any
+# misuse of this material. 
+#
+#*****************************************************************************
+
+#------------------------------------------------------------------------------
+# <Put a Description Here>
+#
+# Use: make [TARGET] [PLATFORM-OVERRIDES]
+#
+# Build Targets:
+#     %.i-Generate the preprocessed output of all c-program implementation file
+#     
+#     %.asm-Generate assembly output of c-program implementation files and the 
+#     final output executable
+#     
+#     %.o -Generate the object file for all c-source files (but do not link) by 
+#     specifying the object file you want to compile.
+#
+#     compile-all -Compile all object files, but DO NOT link.
+#
+#     build- Compile all object files and link into a final executable.
+#
+#     clean - This removes all compiled objects, preprocessed outputs,
+#     assembly outputs, executable files and build output files
+# 
+# Platform Overrides:
+#      PLATFORM=HOST - x86 processor
+#      PLATFORM=MSP432 - msp432 board
+#
+#------------------------------------------------------------------------------
+include sources.mk
+
+# Platform Overrides
+PLATFORM = HOST
+BASENAME = C1M2
+OUTPUT=$(BASENAME).out
+
+
+# Architectures Specific Flags
+
+
+# Compiler Flags and Defines
+CFLAGS = -g \
+	 -O0 \
+	 -std=c99
+
+LDFLAGS = -Wl,-Map=$(BASENAME).map
+
+ifeq ($(PLATFORM),HOST)
+	CC = gcc
+	PLAT = -DHOST
+	LINKER =  
+	SOURCES = $(HOSTSOURCES)
+	DUMP = objdump
+	SIZE = size
+else
+	CC = arm-none-eabi-gcc
+	LINKER = -T ../msp432p401r.lds
+	ARMFLAGS = -mcpu=cortex-m4 \
+		   -mthumb \
+		   -march=armv7e-m \
+		   -mfloat-abi=hard \
+		   -mfpu=fpv4-sp-d16 \
+		   --specs=nosys.specs
+	PLAT = -DMSP432
+	SOURCES = $(MSPSOURCES)
+	DUMP = arm-none-eabi-objdump
+	SIZE = arm-none-eabi-size
+endif
+
+O = $(SOURCES:.c=.o)
+DEP = $(SOURCES:.c=.d)
+
+%.o : %.c
+	$(CC) -c $(INCLUDES) $(CFLAGS) $(LINKER) $(PLAT) $(ARMFLAGS) -o $@ $^
+
+%.asm: %.c
+	$(CC) -c -S $(INCLUDES) $(CFLAGS) $(LINKER) $(PLAT) $(ARMFLAGS) -o $@ $^
+
+%.i: %.c
+	$(CC) -c -E $(INCLUDES) $(CFLAGS) $(LINKER) $(PLAT) $(ARMFLAGS) -o $@ $^
+%.asm: %.out
+	$(DUMP) -S $^
+%.d: %.c
+	$(CC) -M $(INCLUDES) $(PLAT) -o $@ $^
+.PHONY: compile-all
+compile-all: $(O)
+
+.PHONY: clean
+clean:
+	rm -f *.o *.i *.asm *.out *.map *.d
+
+.PHONY: build
+build: $(O) $(DEP)
+	$(CC) $(LDFLAGS) $(INCLUDES) $(CFLAGS) $(LINKER) $(PLAT) $(ARMFLAGS) -o $(OUTPUT) $(O)
+	$(SIZE) -Atd $(OUTPUT)
+
